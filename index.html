@@ -1,0 +1,52 @@
+{\rtf1\ansi\ansicpg950\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html>\
+<head>\
+  <meta charset="UTF-8">\
+  <meta name="viewport" content="width=device-width, initial-scale=1">\
+  <title>Asahi Cafe \uc0\u25171 \u21345 </title>\
+  <style>/* \uc0\u21516 \u20043 \u21069 \u30340  CSS */</style>\
+</head>\
+<body>\
+  <div class="card">...</div>\
+\
+  <script>\
+    // 1. \uc0\u20462 \u25913 \u36889 \u35041 \u65306 \u22635 \u20837 \u20320 \u30340  GAS \u37096 \u32626 \u32178 \u22336 \
+    const GAS_URL = "\uc0\u20320 \u30340 _GAS_\u32178 \u38913 \u25033 \u29992 \u31243 \u24335 \u32178 \u22336 "; \
+    const CAFE_LAT = 25.0560; \
+    const CAFE_LON = 121.5118;\
+    const MAX_DISTANCE = 0.05;\
+\
+    // GPS \uc0\u27298 \u26597 \u37007 \u36655 \u20445 \u25345 \u19981 \u35722 ...\
+\
+    function doPunch(type) \{\
+      const name = localStorage.getItem('asahi_employee_name');\
+      document.getElementById('status').innerText = "\uc0\u21516 \u27493 \u32000 \u37636 \u20013 ...";\
+      \
+      // \uc0\u20351 \u29992  fetch \u20659 \u36865 \u36039 \u26009 \u21040  GAS\
+      fetch(GAS_URL, \{\
+        method: "POST",\
+        body: JSON.stringify(\{ name: name, type: type \})\
+      \})\
+      .then(res => res.json())\
+      .then(data => \{\
+        if ("vibrate" in navigator) navigator.vibrate(200);\
+        alert(type + " \uc0\u25171 \u21345 \u25104 \u21151 \u65281 ");\
+        document.getElementById('status').innerText = type + " \uc0\u24050 \u23436 \u25104 ";\
+      \})\
+      .catch(err => \{\
+        alert("\uc0\u36899 \u32218 \u22833 \u25943 \u65292 \u35531 \u27298 \u26597 \u32178 \u36335 ");\
+        console.error(err);\
+      \});\
+    \}\
+\
+    // \uc0\u20854 \u39192  saveName, resetName, getDistance \u20989 \u25976 \u20445 \u25345 \u19981 \u35722 ...\
+  </script>\
+</body>\
+</html>}
