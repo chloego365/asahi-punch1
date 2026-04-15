@@ -7,10 +7,10 @@
   <style>
     body { font-family: 'PingFang TC', sans-serif; background: #FAF9F6; text-align: center; color: #5D4037; padding: 40px 20px; }
     .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 400px; margin: auto; }
-    .btn { width: 100%; padding: 18px; margin: 10px 0; font-size: 18px; border: none; border-radius: 50px; color: white; cursor: pointer; }
+    .btn { width: 100%; padding: 18px; margin: 10px 0; font-size: 18px; border: none; border-radius: 50px; color: white; cursor: pointer; font-weight: bold; }
     .btn-in { background: #6B8E23; }
     .btn-out { background: #BC8F8F; }
-    select { width: 100%; padding: 15px; font-size: 16px; border-radius: 10px; margin-bottom: 20px; }
+    select, input { width: 100%; padding: 15px; font-size: 16px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #ddd; box-sizing: border-box; }
     #status { margin-top: 15px; font-weight: bold; color: #D32F2F; min-height: 24px; font-size: 14px; }
   </style>
 </head>
@@ -18,16 +18,17 @@
 
   <div class="card">
     <div id="setup-section" style="display:none;">
-      <h3>☕ Asahi Cafe</h3>
-      <p>請選擇您的姓名：</p>
+      <h3>☕ Asahi Cafe 身分設定</h3>
+      <p>請選擇姓名並輸入密碼：</p>
       <select id="name-selector">
-        <option value="">-- 請選擇 --</option>
+        <option value="">-- 請選擇姓名 --</option>
         <option value="Gino">Gino</option>
         <option value="陳品潔">陳品潔</option>
         <option value="Izumi">Izumi</option>
         <option value="山本勇太">山本勇太</option>
       </select>
-      <button class="btn" style="background:#8D6E63" onclick="saveName()">確認身份</button>
+      <input type="password" id="user-password" placeholder="請輸入員工密碼" inputmode="numeric">
+      <button class="btn" style="background:#8D6E63" onclick="saveName()">驗證並登入</button>
     </div>
 
     <div id="punch-section" style="display:none;">
@@ -35,16 +36,24 @@
       <button class="btn btn-in" onclick="checkLocationAndPunch('上班')">🌅 上班打卡</button>
       <button class="btn btn-out" onclick="checkLocationAndPunch('下班')">🌇 下班打卡</button>
       <div id="status"></div>
-      <p style="font-size:11px; color:#CCC; margin-top:40px; cursor:pointer;" onclick="resetName()">重設身份</p>
+      <p style="font-size:11px; color:#CCC; margin-top:40px; cursor:pointer;" onclick="resetName()">切換使用者 / 重設身分</p>
     </div>
   </div>
 
   <script>
     // === [ 請修改以下資訊 ] ===
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzLNxnyqmAKBSqLqVFzC45qmYP2aGRRVvFkMHpd1KIN48WiMxE_sqXYb_nf2jKM52Wh/exec"; 
-    const CAFE_LAT = 25.058073891717136; 
-    const CAFE_LON = 121.56862672527103;
+    const GAS_URL = "您的_GAS_網頁應用程式網址"; 
+    const CAFE_LAT = 25.058073891802987; // 請填寫咖啡廳緯度25.058073891802987, 121.56861599663851
+    const CAFE_LON = 121.56861599663851; // 請填寫咖啡廳經度
     const MAX_DISTANCE = 0.05; 
+
+    // 設定每位員工的密碼 (建議用簡單的 4 位數數字)
+    const USER_PASSWORDS = {
+      "Gino": "1234",
+      "陳品潔": "5678",
+      "Izumi": "0000",
+      "山本勇太": "8888"
+    };
     // =========================
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -58,9 +67,20 @@
 
     function saveName() {
       const name = document.getElementById('name-selector').value;
-      if (name) {
+      const pwd = document.getElementById('user-password').value;
+
+      if (!name) {
+        alert("請選擇姓名");
+        return;
+      }
+
+      // 檢查密碼是否正確
+      if (pwd === USER_PASSWORDS[name]) {
         localStorage.setItem('asahi_employee_name', name);
         showPunchPage(name);
+      } else {
+        alert("密碼錯誤，請重新輸入");
+        document.getElementById('user-password').value = "";
       }
     }
 
@@ -70,6 +90,7 @@
       document.getElementById('greeting-text').innerText = "你好，" + name + "！";
     }
 
+    // GPS 檢查與打卡邏輯 (保持不變)
     function checkLocationAndPunch(type) {
       const statusDisp = document.getElementById('status');
       statusDisp.innerText = "正在取得位置資訊...";
@@ -99,7 +120,7 @@
       
       fetch(GAS_URL, {
         method: "POST",
-        mode: "no-cors", // 這裡是為了避免跨網域問題
+        mode: "no-cors",
         body: JSON.stringify({ name: name, type: type })
       }).then(() => {
         if ("vibrate" in navigator) navigator.vibrate(200);
@@ -121,7 +142,7 @@
     }
 
     function resetName() {
-      if (confirm("確定要重設身份嗎？")) {
+      if (confirm("確定要重設身份嗎？下一次登入需重新輸入密碼。")) {
         localStorage.removeItem('asahi_employee_name');
         location.reload();
       }
