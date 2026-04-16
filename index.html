@@ -30,16 +30,14 @@
         <option value="山本勇太">山本勇太</option>
       </select>
       <input type="password" id="user-password" placeholder="輸入 4 位數驗證碼" inputmode="numeric">
-      <button class="btn" style="background:#8D6E63" onclick="saveName()">驗證並登入</button>
+      <button class="btn" id="login-btn" style="background:#8D6E63" onclick="saveName()">驗證並登入</button>
     </div>
 
     <div id="punch-section" style="display:none;">
       <h2 id="greeting-text">你好！</h2>
       <p id="sub-greeting" style="color:#8D6E63; margin-bottom:25px;">Have A Nice Day！ ☕</p>
-      
       <button class="btn btn-in" onclick="checkLocationAndPunch('上班')">🌅 上班打卡</button>
       <button class="btn btn-out" onclick="checkLocationAndPunch('下班')">🌇 下班打卡</button>
-      
       <div id="status"></div>
       <p style="font-size:11px; color:#CCC; margin-top:40px; cursor:pointer;" onclick="resetName()">切換使用者 / 重設身分</p>
     </div>
@@ -59,16 +57,51 @@
       }
     });
 
+    // 登入驗證函數
     function saveName() {
       const name = document.getElementById('name-selector').value;
       const pwd = document.getElementById('user-password').value;
-      if (name && pwd) {
-        localStorage.setItem('asahi_employee_name', name);
-        localStorage.setItem('asahi_employee_password', pwd);
-        showPunchPage(name);
-      } else {
-        alert("請輸入完整資訊");
+      const loginBtn = document.getElementById('login-btn');
+
+      if (!name || !pwd) {
+        alert("請選擇姓名並輸入驗證碼");
+        return;
       }
+
+      loginBtn.innerText = "驗證中...";
+      loginBtn.disabled = true;
+
+      const callbackName = 'login_cb_' + Math.floor(Math.random() * 100000);
+      const url = `${GAS_URL}?name=${encodeURIComponent(name)}&password=${encodeURIComponent(pwd)}&mode=login&callback=${callbackName}`;
+
+      window[callbackName] = function(data) {
+        if (data.status === "success") {
+          localStorage.setItem('asahi_employee_name', name);
+          localStorage.setItem('asahi_employee_password', pwd);
+          showPunchPage(name);
+        } else {
+          alert(data.message);
+          document.getElementById('user-password').value = "";
+        }
+        loginBtn.innerText = "驗證並登入";
+        loginBtn.disabled = false;
+        cleanup();
+      };
+
+      const script = document.createElement('script');
+      script.src = url;
+      script.onerror = () => {
+        alert("無法連線至驗證伺服器");
+        loginBtn.innerText = "驗證並登入";
+        loginBtn.disabled = false;
+        cleanup();
+      };
+
+      function cleanup() {
+        if (script.parentNode) document.body.removeChild(script);
+        delete window[callbackName];
+      }
+      document.body.appendChild(script);
     }
 
     function showPunchPage(name) {
@@ -80,63 +113,50 @@
     function checkLocationAndPunch(type) {
       const statusDisp = document.getElementById('status');
       statusDisp.innerText = "正在取得 GPS 位置...";
-      
-      if (!navigator.geolocation) {
-        statusDisp.innerText = "瀏覽器不支援定位";
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(function(position) {
-        doPunch(type, position.coords.latitude, position.coords.longitude);
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        doPunch(type, pos.coords.latitude, pos.coords.longitude);
       }, function() {
-        statusDisp.innerText = "打卡失敗：請開啟 GPS 授權";
+        statusDisp.innerText = "定位失敗，請開啟 GPS 授權";
       }, { enableHighAccuracy: true });
     }
 
-function doPunch(type, lat, lon) {
-  const name = localStorage.getItem('asahi_employee_name');
-  const pwd = localStorage.getItem('asahi_employee_password');
-  const statusDisp = document.getElementById('status');
-  statusDisp.innerText = "驗證身分中...";
+    function doPunch(type, lat, lon) {
+      const name = localStorage.getItem('asahi_employee_name');
+      const pwd = localStorage.getItem('asahi_employee_password');
+      const statusDisp = document.getElementById('status');
+      statusDisp.innerText = "打卡同步中...";
 
-  // 產生現在時間
-  const now = new Date();
-  const timeString = now.getHours().toString().padStart(2, '0') + ":" + 
-                     now.getMinutes().toString().padStart(2, '0') + ":" + 
-                     now.getSeconds().toString().padStart(2, '0');
+      const now = new Date();
+      const timeString = now.getHours().toString().padStart(2, '0') + ":" + 
+                         now.getMinutes().toString().padStart(2, '0');
 
-  // 1. 建立 JSONP 請求網址
-  const callbackName = 'asahi_callback_' + Math.floor(Math.random() * 100000);
-  const url = `${GAS_URL}?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}&password=${encodeURIComponent(pwd)}&lat=${lat}&lon=${lon}&callback=${callbackName}`;
+      const callbackName = 'punch_cb_' + Math.floor(Math.random() * 100000);
+      const url = `${GAS_URL}?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}&password=${encodeURIComponent(pwd)}&lat=${lat}&lon=${lon}&mode=punch&callback=${callbackName}`;
 
-  // 2. 定義接收結果的函式
-  window[callbackName] = function(data) {
-    if (data.status === "success") {
-      if ("vibrate" in navigator) navigator.vibrate(200);
-      alert(`${data.message}\n時間：${timeString}`);
-      statusDisp.innerHTML = `<span style="color: #6B8E23;">✅ ${type}完成：${timeString}</span>`;
-      if (type === '下班') document.getElementById('sub-greeting').innerText = "辛苦了！回家路上小心。";
-    } else {
-      alert("打卡失敗：" + data.message);
-      statusDisp.innerText = data.message;
-      statusDisp.style.color = "#D32F2F";
-      if (data.message.includes("密碼")) resetName(); // 密碼錯就強制重設
+      window[callbackName] = function(data) {
+        if (data.status === "success") {
+          if ("vibrate" in navigator) navigator.vibrate(200);
+          alert(`${data.message}\n時間：${timeString}`);
+          statusDisp.innerHTML = `<span style="color: #6B8E23;">✅ ${type}完成：${timeString}</span>`;
+        } else {
+          alert(data.message);
+          statusDisp.innerText = data.message;
+        }
+        cleanup();
+      };
+
+      const script = document.createElement('script');
+      script.src = url;
+      function cleanup() {
+        if (script.parentNode) document.body.removeChild(script);
+        delete window[callbackName];
+      }
+      document.body.appendChild(script);
     }
-    // 清理掉 script 標籤
-    document.body.removeChild(script);
-    delete window[callbackName];
-  };
-
-  // 3. 發送 JSONP 請求 (透過新增 script 標籤)
-  const script = document.createElement('script');
-  script.src = url;
-  document.body.appendChild(script);
-}
 
     function resetName() {
-      if (confirm("確定要重設身份嗎？下一次進入需重新輸入密碼。")) {
-        localStorage.removeItem('asahi_employee_name');
-        localStorage.removeItem('asahi_employee_password');
+      if (confirm("確定要登出並重設身份嗎？")) {
+        localStorage.clear();
         location.reload();
       }
     }
