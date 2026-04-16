@@ -1,17 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Asahi Cafe 打卡</title>
+  <title>Asahi Cafe 打卡系統</title>
   <style>
-    body { font-family: 'PingFang TC', sans-serif; background: #FAF9F6; text-align: center; color: #5D4037; padding: 40px 20px; }
-    .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 400px; margin: auto; }
-    .btn { width: 100%; padding: 18px; margin: 10px 0; font-size: 18px; border: none; border-radius: 50px; color: white; cursor: pointer; font-weight: bold; }
-    .btn-in { background: #6B8E23; }
-    .btn-out { background: #BC8F8F; }
-    select, input { width: 100%; padding: 15px; font-size: 16px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #ddd; box-sizing: border-box; }
-    #status { margin-top: 15px; font-weight: bold; color: #D32F2F; min-height: 24px; font-size: 14px; }
+    body { font-family: 'PingFang TC', sans-serif; background: #FAF9F6; text-align: center; color: #5D4037; padding: 40px 20px; margin: 0; }
+    .card { background: white; border-radius: 24px; padding: 35px 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 400px; margin: auto; }
+    h2 { margin-top: 0; letter-spacing: 1px; }
+    .btn { width: 100%; padding: 18px; margin: 12px 0; font-size: 18px; border: none; border-radius: 50px; color: white; cursor: pointer; font-weight: bold; transition: 0.3s; }
+    .btn-in { background: #6B8E23; box-shadow: 0 4px #556B2F; }
+    .btn-out { background: #BC8F8F; box-shadow: 0 4px #A07070; }
+    .btn:active { transform: translateY(4px); box-shadow: none; }
+    select, input { width: 100%; padding: 15px; font-size: 16px; border-radius: 12px; border: 1px solid #DDD; margin-bottom: 20px; box-sizing: border-box; outline: none; }
+    #status { margin-top: 15px; font-weight: bold; color: #8D6E63; min-height: 24px; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -19,7 +21,7 @@
   <div class="card">
     <div id="setup-section" style="display:none;">
       <h3>☕ Asahi Cafe 身分設定</h3>
-      <p>請選擇姓名並輸入密碼：</p>
+      <p style="color:#8D6E63; font-size:14px;">請選擇姓名並輸入員工密碼</p>
       <select id="name-selector">
         <option value="">-- 請選擇姓名 --</option>
         <option value="Gino">Gino</option>
@@ -27,34 +29,26 @@
         <option value="Izumi">Izumi</option>
         <option value="山本勇太">山本勇太</option>
       </select>
-      <input type="password" id="user-password" placeholder="請輸入員工密碼" inputmode="numeric">
+      <input type="password" id="user-password" placeholder="輸入 4 位數密碼" inputmode="numeric">
       <button class="btn" style="background:#8D6E63" onclick="saveName()">驗證並登入</button>
     </div>
 
     <div id="punch-section" style="display:none;">
       <h2 id="greeting-text">你好！</h2>
+      <p id="sub-greeting" style="color:#8D6E63; margin-bottom:25px;">今天也要沖出好咖啡喔 ☕</p>
+      
       <button class="btn btn-in" onclick="checkLocationAndPunch('上班')">🌅 上班打卡</button>
       <button class="btn btn-out" onclick="checkLocationAndPunch('下班')">🌇 下班打卡</button>
+      
       <div id="status"></div>
       <p style="font-size:11px; color:#CCC; margin-top:40px; cursor:pointer;" onclick="resetName()">切換使用者 / 重設身分</p>
     </div>
   </div>
 
   <script>
-    // === [ 請修改以下資訊 ] ===
-    const GAS_URL = "您的_GAS_網頁應用程式網址"; 
-    const CAFE_LAT = 25.058073891802987; // 請填寫咖啡廳緯度25.058073891802987, 121.56861599663851
-    const CAFE_LON = 121.56861599663851; // 請填寫咖啡廳經度
-    const MAX_DISTANCE = 0.05; 
-
-    // 設定每位員工的密碼 (建議用簡單的 4 位數數字)
-    const USER_PASSWORDS = {
-      "Gino": "1234",
-      "陳品潔": "5678",
-      "Izumi": "0000",
-      "山本勇太": "8888"
-    };
-    // =========================
+    // === [ 請填寫您的 GAS 網址 ] ===
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzLNxnyqmAKBSqLqVFzC45qmYP2aGRRVvFkMHpd1KIN48WiMxE_sqXYb_nf2jKM52Wh/exec"; 
+    // =============================
 
     document.addEventListener('DOMContentLoaded', function() {
       const savedUser = localStorage.getItem('asahi_employee_name');
@@ -68,19 +62,12 @@
     function saveName() {
       const name = document.getElementById('name-selector').value;
       const pwd = document.getElementById('user-password').value;
-
-      if (!name) {
-        alert("請選擇姓名");
-        return;
-      }
-
-      // 檢查密碼是否正確
-      if (pwd === USER_PASSWORDS[name]) {
+      if (name && pwd) {
         localStorage.setItem('asahi_employee_name', name);
+        localStorage.setItem('asahi_employee_password', pwd);
         showPunchPage(name);
       } else {
-        alert("密碼錯誤，請重新輸入");
-        document.getElementById('user-password').value = "";
+        alert("請輸入完整資訊");
       }
     }
 
@@ -90,60 +77,50 @@
       document.getElementById('greeting-text').innerText = "你好，" + name + "！";
     }
 
-    // GPS 檢查與打卡邏輯 (保持不變)
     function checkLocationAndPunch(type) {
       const statusDisp = document.getElementById('status');
-      statusDisp.innerText = "正在取得位置資訊...";
-      statusDisp.style.color = "#8D6E63";
-
+      statusDisp.innerText = "正在取得 GPS 位置...";
+      
       if (!navigator.geolocation) {
         statusDisp.innerText = "瀏覽器不支援定位";
         return;
       }
 
       navigator.geolocation.getCurrentPosition(function(position) {
-        const dist = getDistance(position.coords.latitude, position.coords.longitude, CAFE_LAT, CAFE_LON);
-        if (dist <= MAX_DISTANCE) {
-          doPunch(type);
-        } else {
-          statusDisp.innerText = "打卡失敗：您不在咖啡廳範圍內";
-          statusDisp.style.color = "#D32F2F";
-        }
+        doPunch(type, position.coords.latitude, position.coords.longitude);
       }, function() {
-        statusDisp.innerText = "請開啟 GPS 定位授權";
+        statusDisp.innerText = "打卡失敗：請開啟 GPS 授權";
       }, { enableHighAccuracy: true });
     }
 
-    function doPunch(type) {
+    function doPunch(type, lat, lon) {
       const name = localStorage.getItem('asahi_employee_name');
+      const pwd = localStorage.getItem('asahi_employee_password');
       document.getElementById('status').innerText = "同步紀錄中...";
       
       fetch(GAS_URL, {
         method: "POST",
-        mode: "no-cors",
-        body: JSON.stringify({ name: name, type: type })
+        mode: "no-cors", 
+        body: JSON.stringify({ 
+          name: name, 
+          type: type, 
+          password: pwd,
+          lat: lat,
+          lon: lon
+        })
       }).then(() => {
         if ("vibrate" in navigator) navigator.vibrate(200);
-        alert(type + " 打卡成功！");
+        alert(type + " 打卡紀錄已送出！");
         document.getElementById('status').innerText = type + " 已完成";
       }).catch(err => {
-        alert("連線失敗");
+        alert("連線失敗，請檢查網路");
       });
     }
 
-    function getDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-
     function resetName() {
-      if (confirm("確定要重設身份嗎？下一次登入需重新輸入密碼。")) {
+      if (confirm("確定要重設身份嗎？下一次進入需重新輸入密碼。")) {
         localStorage.removeItem('asahi_employee_name');
+        localStorage.removeItem('asahi_employee_password');
         location.reload();
       }
     }
