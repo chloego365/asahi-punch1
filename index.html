@@ -94,28 +94,47 @@
     }
 
     function doPunch(type, lat, lon) {
-      const name = localStorage.getItem('asahi_employee_name');
-      const pwd = localStorage.getItem('asahi_employee_password');
-      document.getElementById('status').innerText = "同步紀錄中...";
-      
-      fetch(GAS_URL, {
-        method: "POST",
-        mode: "no-cors", 
-        body: JSON.stringify({ 
-          name: name, 
-          type: type, 
-          password: pwd,
-          lat: lat,
-          lon: lon
-        })
-      }).then(() => {
-        if ("vibrate" in navigator) navigator.vibrate(200);
-        alert(type + " 打卡紀錄已送出！");
-        document.getElementById('status').innerText = type + " 已完成";
-      }).catch(err => {
-        alert("連線失敗，請檢查網路");
-      });
+  const name = localStorage.getItem('asahi_employee_name');
+  const pwd = localStorage.getItem('asahi_employee_password');
+  const statusDisp = document.getElementById('status');
+  
+  // 1. 抓取當下的時間
+  const now = new Date();
+  const timeString = now.getHours().toString().padStart(2, '0') + ":" + 
+                     now.getMinutes().toString().padStart(2, '0') + ":" + 
+                     now.getSeconds().toString().padStart(2, '0');
+
+  statusDisp.innerText = "同步紀錄中...";
+  
+  fetch(GAS_URL, {
+    method: "POST",
+    mode: "no-cors", 
+    body: JSON.stringify({ 
+      name: name, 
+      type: type, 
+      password: pwd,
+      lat: lat,
+      lon: lon
+    })
+  }).then(() => {
+    // 打卡成功後的震動與提醒
+    if ("vibrate" in navigator) navigator.vibrate(200);
+    
+    // 2. 更新畫面顯示具體時間
+    alert(`${type} 打卡成功！\n時間：${timeString}`);
+    
+    // 3. 讓 status 區域顯示更詳細的資訊
+    statusDisp.innerHTML = `<span style="color: #6B8E23;">✅ ${type}完成：${timeString}</span>`;
+    
+    // 如果是下班，可以換個溫馨的語錄
+    if (type === '下班') {
+       document.getElementById('sub-greeting').innerText = "辛苦了！回家路上小心。";
     }
+  }).catch(err => {
+    alert("連線失敗，請檢查網路");
+    statusDisp.innerText = "連線失敗";
+  });
+}
 
     function resetName() {
       if (confirm("確定要重設身份嗎？下一次進入需重新輸入密碼。")) {
