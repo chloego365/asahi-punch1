@@ -29,13 +29,13 @@
         <option value="Izumi">Izumi</option>
         <option value="山本勇太">山本勇太</option>
       </select>
-      <input type="password" id="user-password" placeholder="輸入 4 位數密碼" inputmode="numeric">
+      <input type="password" id="user-password" placeholder="輸入 4 位數驗證碼" inputmode="numeric">
       <button class="btn" style="background:#8D6E63" onclick="saveName()">驗證並登入</button>
     </div>
 
     <div id="punch-section" style="display:none;">
       <h2 id="greeting-text">你好！</h2>
-      <p id="sub-greeting" style="color:#8D6E63; margin-bottom:25px;">今天也要沖出好咖啡喔 ☕</p>
+      <p id="sub-greeting" style="color:#8D6E63; margin-bottom:25px;">Have A Nice Day！ ☕</p>
       
       <button class="btn btn-in" onclick="checkLocationAndPunch('上班')">🌅 上班打卡</button>
       <button class="btn btn-out" onclick="checkLocationAndPunch('下班')">🌇 下班打卡</button>
@@ -47,7 +47,7 @@
 
   <script>
     // === [ 請填寫您的 GAS 網址 ] ===
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxpnS37GNZ_W6zL0UH6CDlLxNS7YxZyBLGZKPAcNJJ5/dev"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzLNxnyqmAKBSqLqVFzC45qmYP2aGRRVvFkMHpd1KIN48WiMxE_sqXYb_nf2jKM52Wh/exec"; 
     // =============================
 
     document.addEventListener('DOMContentLoaded', function() {
