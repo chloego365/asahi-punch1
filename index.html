@@ -93,47 +93,44 @@
       }, { enableHighAccuracy: true });
     }
 
-    function doPunch(type, lat, lon) {
+function doPunch(type, lat, lon) {
   const name = localStorage.getItem('asahi_employee_name');
   const pwd = localStorage.getItem('asahi_employee_password');
   const statusDisp = document.getElementById('status');
-  
-  // 1. 抓取當下的時間
+  statusDisp.innerText = "驗證身分中...";
+
+  // 產生現在時間
   const now = new Date();
   const timeString = now.getHours().toString().padStart(2, '0') + ":" + 
                      now.getMinutes().toString().padStart(2, '0') + ":" + 
                      now.getSeconds().toString().padStart(2, '0');
 
-  statusDisp.innerText = "同步紀錄中...";
-  
-  fetch(GAS_URL, {
-    method: "POST",
-    mode: "no-cors", 
-    body: JSON.stringify({ 
-      name: name, 
-      type: type, 
-      password: pwd,
-      lat: lat,
-      lon: lon
-    })
-  }).then(() => {
-    // 打卡成功後的震動與提醒
-    if ("vibrate" in navigator) navigator.vibrate(200);
-    
-    // 2. 更新畫面顯示具體時間
-    alert(`${type} 打卡成功！\n時間：${timeString}`);
-    
-    // 3. 讓 status 區域顯示更詳細的資訊
-    statusDisp.innerHTML = `<span style="color: #6B8E23;">✅ ${type}完成：${timeString}</span>`;
-    
-    // 如果是下班，可以換個溫馨的語錄
-    if (type === '下班') {
-       document.getElementById('sub-greeting').innerText = "辛苦了！回家路上小心。";
+  // 1. 建立 JSONP 請求網址
+  const callbackName = 'asahi_callback_' + Math.floor(Math.random() * 100000);
+  const url = `${GAS_URL}?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}&password=${encodeURIComponent(pwd)}&lat=${lat}&lon=${lon}&callback=${callbackName}`;
+
+  // 2. 定義接收結果的函式
+  window[callbackName] = function(data) {
+    if (data.status === "success") {
+      if ("vibrate" in navigator) navigator.vibrate(200);
+      alert(`${data.message}\n時間：${timeString}`);
+      statusDisp.innerHTML = `<span style="color: #6B8E23;">✅ ${type}完成：${timeString}</span>`;
+      if (type === '下班') document.getElementById('sub-greeting').innerText = "辛苦了！回家路上小心。";
+    } else {
+      alert("打卡失敗：" + data.message);
+      statusDisp.innerText = data.message;
+      statusDisp.style.color = "#D32F2F";
+      if (data.message.includes("密碼")) resetName(); // 密碼錯就強制重設
     }
-  }).catch(err => {
-    alert("連線失敗，請檢查網路");
-    statusDisp.innerText = "連線失敗";
-  });
+    // 清理掉 script 標籤
+    document.body.removeChild(script);
+    delete window[callbackName];
+  };
+
+  // 3. 發送 JSONP 請求 (透過新增 script 標籤)
+  const script = document.createElement('script');
+  script.src = url;
+  document.body.appendChild(script);
 }
 
     function resetName() {
