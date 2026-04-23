@@ -14,6 +14,13 @@
     .btn:active { transform: translateY(4px); box-shadow: none; }
     select, input { width: 100%; padding: 15px; font-size: 16px; border-radius: 12px; border: 1px solid #DDD; margin-bottom: 20px; box-sizing: border-box; outline: none; }
     #status { margin-top: 15px; font-weight: bold; color: #8D6E63; min-height: 24px; font-size: 14px; }
+    
+    /* 歷史紀錄表格樣式 */
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+    th { background: #FDFCFB; color: #8D6E63; padding: 10px 5px; border-bottom: 2px solid #EEE; }
+    td { padding: 12px 5px; border-bottom: 1px solid #F5F5F5; }
+    .t-in { color: #6B8E23; font-weight: bold; }
+    .t-out { color: #BC8F8F; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -35,18 +42,24 @@
 
     <div id="punch-section" style="display:none;">
       <h2 id="greeting-text">你好！</h2>
-      <p id="sub-greeting" style="color:#8D6E63; margin-bottom:25px;">Have A Nice Day！ ☕</p>
+      <p style="color:#8D6E63; margin-bottom:25px;">Have A Nice Day！ ☕</p>
       <button class="btn btn-in" onclick="checkLocationAndPunch('上班')">🌅 上班打卡</button>
       <button class="btn btn-out" onclick="checkLocationAndPunch('下班')">🌇 下班打卡</button>
       <div id="status"></div>
+
+      <div id="history-area" style="margin-top:30px; border-top:1px solid #EEE; padding-top:20px;">
+        <h4 style="color:#8D6E63; margin-bottom:10px;">🗓️ 本月紀錄 (最近10筆)</h4>
+        <div id="history-list">讀取中...</div>
+      </div>
+
       <p style="font-size:11px; color:#CCC; margin-top:40px; cursor:pointer;" onclick="resetName()">切換使用者 / 重設身分</p>
     </div>
   </div>
 
   <script>
-    // === [ 請填寫您的 GAS 網址 ] ===
+    // === [ 重要：請替換為您的 GAS 網址 ] ===
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzLNxnyqmAKBSqLqVFzC45qmYP2aGRRVvFkMHpd1KIN48WiMxE_sqXYb_nf2jKM52Wh/exec"; 
-    // =============================
+    // ======================================
 
     document.addEventListener('DOMContentLoaded', function() {
       const savedUser = localStorage.getItem('asahi_employee_name');
@@ -57,105 +70,100 @@
       }
     });
 
-    // 登入驗證函數
     function saveName() {
       const name = document.getElementById('name-selector').value;
       const pwd = document.getElementById('user-password').value;
       const loginBtn = document.getElementById('login-btn');
-
-      if (!name || !pwd) {
-        alert("請選擇姓名並輸入驗證碼");
-        return;
-      }
+      if (!name || !pwd) { alert("請填寫完整資訊"); return; }
 
       loginBtn.innerText = "驗證中...";
       loginBtn.disabled = true;
 
-      const callbackName = 'login_cb_' + Math.floor(Math.random() * 100000);
-      const url = `${GAS_URL}?name=${encodeURIComponent(name)}&password=${encodeURIComponent(pwd)}&mode=login&callback=${callbackName}`;
-
-      window[callbackName] = function(data) {
-        if (data.status === "success") {
+      callGAS({ name: name, password: pwd, mode: 'login' }, function(res) {
+        if (res.status === "success") {
           localStorage.setItem('asahi_employee_name', name);
           localStorage.setItem('asahi_employee_password', pwd);
           showPunchPage(name);
         } else {
-          alert(data.message);
+          alert(res.message);
           document.getElementById('user-password').value = "";
         }
         loginBtn.innerText = "驗證並登入";
         loginBtn.disabled = false;
-        cleanup();
-      };
-
-      const script = document.createElement('script');
-      script.src = url;
-      script.onerror = () => {
-        alert("無法連線至驗證伺服器");
-        loginBtn.innerText = "驗證並登入";
-        loginBtn.disabled = false;
-        cleanup();
-      };
-
-      function cleanup() {
-        if (script.parentNode) document.body.removeChild(script);
-        delete window[callbackName];
-      }
-      document.body.appendChild(script);
+      });
     }
 
     function showPunchPage(name) {
       document.getElementById('setup-section').style.display = 'none';
       document.getElementById('punch-section').style.display = 'block';
       document.getElementById('greeting-text').innerText = "你好，" + name + "！";
+      fetchHistory();
+    }
+
+    function fetchHistory() {
+      const name = localStorage.getItem('asahi_employee_name');
+      const pwd = localStorage.getItem('asahi_employee_password');
+      callGAS({ name: name, password: pwd, mode: 'history' }, function(res) {
+        const listDiv = document.getElementById('history-list');
+        if (res.status === "success" && res.data.length > 0) {
+          let html = '<table><tr><th>日期</th><th>上班</th><th>下班</th></tr>';
+          res.data.forEach(item => {
+            html += `<tr><td>${item.date}</td><td class="t-in">${item.in}</td><td class="t-out">${item.out}</td></tr>`;
+          });
+          html += '</table>';
+          listDiv.innerHTML = html;
+        } else {
+          listDiv.innerHTML = "<p style='padding:10px; color:#999;'>暫無紀錄</p>";
+        }
+      });
     }
 
     function checkLocationAndPunch(type) {
-      const statusDisp = document.getElementById('status');
-      statusDisp.innerText = "正在取得 GPS 位置...";
+      document.getElementById('status').innerText = "正在取得 GPS 位置...";
       navigator.geolocation.getCurrentPosition(function(pos) {
         doPunch(type, pos.coords.latitude, pos.coords.longitude);
       }, function() {
-        statusDisp.innerText = "定位失敗，請開啟 GPS 授權";
+        alert("請開啟 GPS 授權以進行打卡");
+        document.getElementById('status').innerText = "打卡失敗：無 GPS 權限";
       }, { enableHighAccuracy: true });
     }
 
     function doPunch(type, lat, lon) {
       const name = localStorage.getItem('asahi_employee_name');
       const pwd = localStorage.getItem('asahi_employee_password');
-      const statusDisp = document.getElementById('status');
-      statusDisp.innerText = "打卡同步中...";
+      document.getElementById('status').innerText = "同步中...";
 
-      const now = new Date();
-      const timeString = now.getHours().toString().padStart(2, '0') + ":" + 
-                         now.getMinutes().toString().padStart(2, '0');
-
-      const callbackName = 'punch_cb_' + Math.floor(Math.random() * 100000);
-      const url = `${GAS_URL}?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}&password=${encodeURIComponent(pwd)}&lat=${lat}&lon=${lon}&mode=punch&callback=${callbackName}`;
-
-      window[callbackName] = function(data) {
-        if (data.status === "success") {
-          if ("vibrate" in navigator) navigator.vibrate(200);
-          alert(`${data.message}\n時間：${timeString}`);
-          statusDisp.innerHTML = `<span style="color: #6B8E23;">✅ ${type}完成：${timeString}</span>`;
+      callGAS({ name: name, password: pwd, type: type, lat: lat, lon: lon, mode: 'punch' }, function(res) {
+        if (res.status === "success") {
+          alert(res.message);
+          document.getElementById('status').innerText = "✅ " + type + "成功";
+          fetchHistory(); // 成功後自動刷新列表
         } else {
-          alert(data.message);
-          statusDisp.innerText = data.message;
+          alert(res.message);
+          document.getElementById('status').innerText = res.message;
         }
-        cleanup();
-      };
+      });
+    }
 
+    // 通用的 JSONP 呼叫工具
+    function callGAS(params, callback) {
+      const callbackName = 'cb_' + Date.now() + Math.floor(Math.random()*1000);
+      let url = GAS_URL + "?callback=" + callbackName;
+      for (let key in params) {
+        url += `&${key}=${encodeURIComponent(params[key])}`;
+      }
+      window[callbackName] = function(data) {
+        callback(data);
+        document.body.removeChild(script);
+        delete window[callbackName];
+      };
       const script = document.createElement('script');
       script.src = url;
-      function cleanup() {
-        if (script.parentNode) document.body.removeChild(script);
-        delete window[callbackName];
-      }
       document.body.appendChild(script);
     }
 
     function resetName() {
-      if (confirm("確定要登出並重設身份嗎？")) {
+      if (confirm("確定要登出並重設身分嗎？")) {
         localStorage.clear();
         location.reload();
       }
